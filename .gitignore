@@ -1,0 +1,24 @@
+# Node
+node_modules/
+dist/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Env files
+.env
+
+# Database
+*.db
+
+# Uploads
+uploads/
+
+# Docker
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db

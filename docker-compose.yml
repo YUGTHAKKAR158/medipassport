@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+
+  backend:
+    build: ./backend
+    container_name: medipassport-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=medipassport-secret-key-2024
+      - JWT_SECRET_KEY=medipassport-jwt-secret-2024
+      - DATABASE_URL=sqlite:///medipassport.db
+    volumes:
+      - uploads_data:/app/uploads
+      - db_data:/app/instance
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: medipassport-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  uploads_data:
+  db_data:
