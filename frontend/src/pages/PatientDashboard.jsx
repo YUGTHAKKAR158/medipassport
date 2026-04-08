@@ -234,7 +234,7 @@ export default function PatientDashboard() {
                               {r.file_urls.map((url, i) => (
                                 <a
                                   key={i}
-                                  href={'http://localhost:5000' + url}
+                                  href={url}
                                   target="_blank"
                                   rel="noreferrer"
                                   className="text-xs bg-teal-50 text-teal-600 border border-teal-200 px-3 py-1 rounded-lg hover:bg-teal-100 transition"

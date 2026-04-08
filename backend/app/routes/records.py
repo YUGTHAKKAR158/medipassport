@@ -1,41 +1,17 @@
 import os
-import uuid
 import json
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from .. import db
 from ..models import MedicalRecord, AccessRequest, User
+from ..utils.s3_helper import upload_file_to_s3, delete_file_from_s3
 
 records_bp = Blueprint('records', __name__)
 
-UPLOAD_FOLDER = os.path.normpath(
-    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '..', 'uploads')
-)
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf', 'gif', 'webp'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-def save_files(files):
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    file_urls = []
-    for file in files:
-        if file and allowed_file(file.filename):
-            ext = file.filename.rsplit('.', 1)[1].lower()
-            filename = str(uuid.uuid4()) + '.' + ext
-            filepath = os.path.join(UPLOAD_FOLDER, filename)
-            file.save(filepath)
-            file_urls.append('/uploads/' + filename)
-    return file_urls
-
-def delete_files(file_urls_json):
-    if not file_urls_json:
-        return
-    for url in json.loads(file_urls_json):
-        filename = url.split('/')[-1]
-        filepath = os.path.join(UPLOAD_FOLDER, filename)
-        if os.path.exists(filepath):
-            os.remove(filepath)
 
 @records_bp.route('', methods=['GET'])
 @jwt_required()
@@ -71,7 +47,15 @@ def add_record():
     if not approved:
         return jsonify({'error': 'You do not have approved access'}), 403
 
-    file_urls = save_files(request.files.getlist('files'))
+    file_urls = []
+    files = request.files.getlist('files')
+    for file in files:
+        if file and allowed_file(file.filename):
+            try:
+                url = upload_file_to_s3(file, file.filename)
+                file_urls.append(url)
+            except Exception as e:
+                print('Upload error:', e)
 
     record = MedicalRecord(
         patient_id=int(patient_id),
@@ -107,16 +91,22 @@ def edit_record(record_id):
         record.description = request.form.get('description', record.description)
 
         existing_urls = json.loads(record.file_urls) if record.file_urls else []
-
         removed = request.form.getlist('removed_files')
-        kept = [u for u in existing_urls if u not in removed]
-        for url in removed:
-            filename = url.split('/')[-1]
-            filepath = os.path.join(UPLOAD_FOLDER, filename)
-            if os.path.exists(filepath):
-                os.remove(filepath)
 
-        new_urls = save_files(request.files.getlist('files'))
+        for url in removed:
+            delete_file_from_s3(url)
+
+        kept = [u for u in existing_urls if u not in removed]
+
+        new_urls = []
+        for file in request.files.getlist('files'):
+            if file and allowed_file(file.filename):
+                try:
+                    url = upload_file_to_s3(file, file.filename)
+                    new_urls.append(url)
+                except Exception as e:
+                    print('Upload error:', e)
+
         record.file_urls = json.dumps(kept + new_urls)
     else:
         data = request.get_json()
@@ -146,7 +136,10 @@ def delete_record(record_id):
     if not approved and not is_patient:
         return jsonify({'error': 'Not authorized'}), 403
 
-    delete_files(record.file_urls)
+    if record.file_urls:
+        for url in json.loads(record.file_urls):
+            delete_file_from_s3(url)
+
     db.session.delete(record)
     db.session.commit()
     return jsonify({'message': 'Record deleted'}), 200

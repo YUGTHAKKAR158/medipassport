@@ -2,6 +2,17 @@ version: '3.8'
 
 services:
 
+  db:
+    image: postgres:15-alpine
+    container_name: medipassport-db
+    environment:
+      POSTGRES_DB: medipassport
+      POSTGRES_USER: mediuser
+      POSTGRES_PASSWORD: medipass123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
   backend:
     build: ./backend
     container_name: medipassport-backend
@@ -11,10 +22,13 @@ services:
       - FLASK_ENV=production
       - SECRET_KEY=medipassport-secret-key-2024
       - JWT_SECRET_KEY=medipassport-jwt-secret-2024
-      - DATABASE_URL=sqlite:///medipassport.db
-    volumes:
-      - uploads_data:/app/uploads
-      - db_data:/app/instance
+      - DATABASE_URL=postgresql://mediuser:medipass123@db:5432/medipassport
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_BUCKET_NAME=${AWS_BUCKET_NAME}
+      - AWS_REGION=${AWS_REGION}
+    depends_on:
+      - db
     restart: unless-stopped
 
   frontend:
@@ -27,5 +41,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  uploads_data:
-  db_data:
+  postgres_data:

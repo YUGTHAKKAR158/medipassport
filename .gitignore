@@ -1,24 +1,44 @@
-# Node
-node_modules/
-dist/
+# ----------------------
+# Environment variables
+# ----------------------
+.env
+backend/.env
 
-# Python
+# ----------------------
+# Python (Backend)
+# ----------------------
 venv/
+backend/venv/
 __pycache__/
 *.pyc
+backend/instance/
 
-# Env files
-.env
+# ----------------------
+# Node.js (Frontend)
+# ----------------------
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
 
+# ----------------------
 # Database
+# ----------------------
 *.db
 
-# Uploads
+# ----------------------
+# Uploads / Storage
+# ----------------------
 uploads/
+backend/uploads/
 
-# Docker
+# ----------------------
+# Logs
+# ----------------------
 *.log
 
+# ----------------------
 # OS files
+# ----------------------
 .DS_Store
 Thumbs.db

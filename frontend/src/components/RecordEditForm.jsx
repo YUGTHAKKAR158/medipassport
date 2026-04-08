@@ -83,7 +83,7 @@ export default function RecordEditForm({ record, onSave, onCancel }) {
             {existingFiles.map((url, i) => (
               <div key={i} className="flex items-center justify-between bg-gray-50 border rounded-lg px-3 py-2">
                 <a
-                  href={'http://localhost:5000' + url}
+                  href={url}
                   target="_blank"
                   rel="noreferrer"
                   className="text-xs text-teal-600 underline truncate max-w-xs"
