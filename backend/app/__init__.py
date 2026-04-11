@@ -20,11 +20,13 @@ def create_app():
     from .routes.records import records_bp
     from .routes.qr import qr_bp
     from .routes.access import access_bp
+    from .routes.ml_route import ml_bp
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(records_bp, url_prefix='/api/records')
     app.register_blueprint(qr_bp, url_prefix='/api/qr')
     app.register_blueprint(access_bp, url_prefix='/api/access')
+    app.register_blueprint(ml_bp, url_prefix='/api/ml')
 
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'uploads')
     UPLOAD_FOLDER = os.path.normpath(UPLOAD_FOLDER)

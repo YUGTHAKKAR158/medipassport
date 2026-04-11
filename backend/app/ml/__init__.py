@@ -1,0 +1,1 @@
+from .drug_checker import check_drug_interactions
