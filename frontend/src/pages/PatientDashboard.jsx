@@ -50,9 +50,36 @@ export default function PatientDashboard() {
   }
 
   const handleCopyId = () => {
-    navigator.clipboard.writeText(user.health_id)
-    setCopySuccess(true)
-    setTimeout(() => setCopySuccess(false), 2000)
+    const id = user?.health_id
+    if (!id) return
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(id).then(() => {
+        setCopySuccess(true)
+        setTimeout(() => setCopySuccess(false), 2000)
+      }).catch(() => {
+        fallbackCopy(id)
+      })
+    } else {
+      fallbackCopy(id)
+    }
+  }
+
+  const fallbackCopy = (text) => {
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.focus()
+    textarea.select()
+    try {
+      document.execCommand('copy')
+      setCopySuccess(true)
+      setTimeout(() => setCopySuccess(false), 2000)
+    } catch (e) {
+      console.error('Copy failed', e)
+    }
+    document.body.removeChild(textarea)
   }
 
   const openEdit = (record) => {
@@ -198,22 +225,27 @@ export default function PatientDashboard() {
                    </span>
                 </div>
                 
-                <div className="flex items-center gap-3">
-                  <div className="bg-white/10 border border-white/20 backdrop-blur-md px-6 py-3 rounded-2xl flex items-center gap-4">
-                    <p className="font-mono text-3xl sm:text-4xl font-extrabold text-white tracking-wider outline-none">
-                      {user?.health_id}
-                    </p>
-                    <button
-                      onClick={handleCopyId}
-                      className="bg-white/10 hover:bg-white/20 text-white p-2.5 rounded-xl transition flex items-center justify-center group shadow-sm"
-                      title="Copy Health ID"
-                    >
-                      {copySuccess ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-                      )}
-                    </button>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-white/10 border border-white/20 backdrop-blur-md px-6 py-3 rounded-2xl flex items-center gap-4">
+                      <p className="font-mono text-3xl sm:text-4xl font-extrabold text-white tracking-wider outline-none truncate max-w-[200px] sm:max-w-xs">
+                        {user?.health_id}
+                      </p>
+                      <button
+                        onClick={handleCopyId}
+                        className="bg-white/10 hover:bg-white/20 text-white p-2.5 rounded-xl transition flex items-center justify-center group shadow-sm"
+                        title="Copy Health ID"
+                      >
+                        {copySuccess ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="text-xs font-mono text-blue-300/80 break-all select-all pl-2">
+                    {user?.health_id}
                   </div>
                 </div>
               </div>
@@ -412,7 +444,7 @@ export default function PatientDashboard() {
                     </div>
                     
                     <div className="flex flex-col w-full gap-4 mt-10">
-                      <div className="bg-slate-800/50 border border-slate-700 px-6 py-4 rounded-xl text-white font-mono font-bold tracking-widest text-lg w-full shadow-inner">
+                      <div className="bg-slate-800/50 border border-slate-700 px-6 py-4 rounded-xl text-white font-mono font-bold tracking-widest text-sm w-full shadow-inner truncate">
                         {user?.health_id}
                       </div>
                       <button
@@ -431,6 +463,9 @@ export default function PatientDashboard() {
                           </>
                         )}
                       </button>
+                      <div className="text-xs font-mono text-slate-400 break-all select-all text-center">
+                        {user?.health_id}
+                      </div>
                     </div>
                   </div>
                 ) : (

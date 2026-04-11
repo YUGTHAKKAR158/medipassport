@@ -147,7 +147,7 @@ export default function DoctorPortal() {
         <div className="p-6 flex items-center gap-3 border-b border-slate-800">
           <div className="text-teal-400">
             {/* Health Cross / Doctor SVG */}
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
           </div>
           <h1 className="text-xl font-extrabold text-white tracking-tight">MediPassport</h1>
         </div>
@@ -205,7 +205,7 @@ export default function DoctorPortal() {
         {/* Mobile Header */}
         <div className="md:hidden bg-[#0F172A] text-white p-4 flex justify-between items-center sticky top-0 z-50">
            <div className="flex items-center gap-2">
-             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-teal-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-teal-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
              <h1 className="font-extrabold tracking-tight">MediPassport</h1>
            </div>
            <button onClick={logout} className="text-xs font-semibold bg-white/10 px-3 py-1.5 rounded-md text-red-300">Logout</button>
@@ -271,7 +271,7 @@ export default function DoctorPortal() {
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
                 </div>
                 <h3 className="text-2xl font-extrabold text-slate-800 mb-2">Request Patient Access</h3>
-                <p className="text-slate-500 font-medium mb-8">Enter the patient's exact 8-character Health ID to request secure access to their medical records.</p>
+                <p className="text-slate-500 font-medium mb-8">Enter the patient's exact Health ID to request secure access to their medical records.</p>
                 
                 <div className="space-y-6">
                   <div className="relative">
@@ -280,11 +280,10 @@ export default function DoctorPortal() {
                     </div>
                     <input
                       type="text"
-                      placeholder="e.g. A1B2C3D4"
-                      className="w-full pl-14 pr-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white font-mono text-2xl font-extrabold tracking-widest uppercase transition-all shadow-sm text-center placeholder:text-slate-300 placeholder:font-sans placeholder:font-medium placeholder:text-lg"
+                      placeholder="e.g. ab406a14-e21e-4565-898a-bf39d942e160"
+                      className="w-full pl-14 pr-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white font-mono text-sm font-extrabold tracking-widest transition-all shadow-sm text-center placeholder:text-slate-400 placeholder:font-sans placeholder:font-medium placeholder:text-sm"
                       value={healthId}
-                      onChange={e => setHealthId(e.target.value.toUpperCase())}
-                      maxLength={8}
+                      onChange={e => setHealthId(e.target.value)}
                     />
                   </div>
                   
