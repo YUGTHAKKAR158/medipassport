@@ -24,11 +24,8 @@ dist-ssr
 *.sw?
 
 # Sensitive credentials
-medipassportpassport-app_accessKeys.csv
-medipassport-app_credentials.csv
-medipassport-key.pem
-
-*.pem
-*.csv
 medipassport-app_accessKeys.csv
 medipassport-app_credentials.csv
+medipassport-key.pem
+*.pem
+*.csv
