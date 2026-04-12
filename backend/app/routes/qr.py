@@ -14,13 +14,11 @@ def get_qr(patient_id):
     # Priority 1: explicit env var (set via start.sh or docker-compose)
     base_url = os.environ.get('APP_BASE_URL', '').strip()
 
-    # Priority 2: derive from the incoming request host
+    # Priority 2: derive from request host, always use port 3000 (frontend)
     if not base_url:
-        host = request.host  # e.g. "13.201.124.52:5000"
-        # Replace backend port 5000 with frontend port 3000
-        if ':5000' in host:
-            host = host.replace(':5000', ':3000')
-        base_url = f"http://{host}"
+        host = request.host  # could be "43.205.196.75" or "43.205.196.75:5000"
+        ip = host.split(':')[0]  # strip any port
+        base_url = f"http://{ip}:3000"
 
     url = f"{base_url}/emergency/{user.health_id}"
     qr_base64 = generate_qr(url)
