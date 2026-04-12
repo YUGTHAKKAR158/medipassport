@@ -1,7 +1,7 @@
 import RecordEditForm from '../components/RecordEditForm'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { getRecords, getQRCode, getPendingRequests, respondAccess, editRecord } from '../services/api'
+import { getRecords, getQRCode, getPendingRequests, respondAccess, editRecord, getProfile, updateProfile } from '../services/api'
 
 const RECORD_TYPES = [
   'Lab Report', 'Prescription', 'Surgery Notes',
@@ -20,8 +20,71 @@ export default function PatientDashboard() {
   const [editForm, setEditForm] = useState({})
   const [copySuccess, setCopySuccess] = useState(false)
   const [viewingRecord, setViewingRecord] = useState(null)
+  const [profileForm, setProfileForm] = useState({
+    blood_group: 'A+',
+    allergies: '',
+    emergency_contact_name: '',
+    emergency_contact_phone: ''
+  })
+  const [phone, setPhone] = useState('')
+  const [countryCode, setCountryCode] = useState('+91')
+  const [profileStatus, setProfileStatus] = useState(null)
+  const [profileError, setProfileError] = useState('')
+  const [profileLoaded, setProfileLoaded] = useState(false)
 
   useEffect(() => { fetchData() }, [])
+
+  useEffect(() => {
+    if (activeTab === 'profile' && !profileLoaded) {
+      getProfile().then(res => {
+        let initialCode = '+91'
+        let initialNumber = ''
+        const ePhone = res.data.emergency_contact_phone || ''
+        if (ePhone.includes(' ')) {
+           const parts = ePhone.split(' ')
+           initialCode = parts[0]
+           initialNumber = parts.slice(1).join(' ')
+        } else {
+           initialNumber = ePhone
+        }
+        setCountryCode(initialCode)
+        setPhone(initialNumber)
+        setProfileForm({
+          blood_group: res.data.blood_group || 'A+',
+          allergies: res.data.allergies || '',
+          emergency_contact_name: res.data.emergency_contact_name || '',
+          emergency_contact_phone: ePhone
+        })
+        setProfileLoaded(true)
+      }).catch(err => {
+        console.error(err)
+        setProfileError('Failed to load profile')
+      })
+    }
+  }, [activeTab, profileLoaded])
+
+  const handleProfileSave = async (e) => {
+    if (e) e.preventDefault()
+    if (phone && phone.length !== 10) {
+      setProfileError('Phone number must be exactly 10 digits')
+      return
+    }
+    try {
+      setProfileError('')
+      setProfileStatus(null)
+      const payload = {
+        ...profileForm,
+        emergency_contact_phone: phone ? `${countryCode} ${phone}` : ''
+      }
+      await updateProfile(payload)
+      setProfileStatus('success')
+      setTimeout(() => setProfileStatus(null), 3000)
+    } catch (err) {
+      setProfileError(err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to update profile. Please try again.')
+    }
+  }
+
+  const isPhoneInvalid = phone.length > 0 && phone.length !== 10;
 
   const fetchData = async () => {
     try {
@@ -138,6 +201,7 @@ export default function PatientDashboard() {
         <nav className="flex-1 py-8 px-4 space-y-2">
           {[
             { id: 'overview', label: 'Overview', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg> },
+            { id: 'profile', label: 'Profile', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg> },
             { id: 'records', label: 'Records', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg> },
             { id: 'qrcode', label: 'My QR Code', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg> }
           ].map(item => (
@@ -189,7 +253,7 @@ export default function PatientDashboard() {
 
         {/* Mobile Navigation fallback */}
         <div className="md:hidden flex overflow-x-auto bg-[#0F172A]/95 backdrop-blur-md sticky top-[60px] z-40 border-t border-slate-800">
-           {['overview', 'records', 'qrcode'].map(tab => (
+           {['overview', 'profile', 'records', 'qrcode'].map(tab => (
              <button
                key={tab}
                onClick={() => setActiveTab(tab)}
@@ -204,7 +268,7 @@ export default function PatientDashboard() {
           <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }`}</style>
           
           {/* Health ID Card - Top of main content (Always visible or in Overview? Instruction says top of main content, so I'll render it universally or inside overview) */}
-          {(activeTab === 'overview' || activeTab === 'records') && (
+          {(activeTab === 'overview' || activeTab === 'records' || activeTab === 'profile') && (
             <div className="bg-gradient-to-r from-[#0F172A] to-blue-900 rounded-3xl p-6 sm:p-10 relative overflow-hidden shadow-2xl border border-blue-800/50 flex flex-col sm:flex-row justify-between items-start sm:items-center">
               {/* Right side squares pattern */}
               <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-20 pointer-events-none">
@@ -328,6 +392,114 @@ export default function PatientDashboard() {
             </>
           )}
 
+          {/* PROFILE TAB */}
+          {activeTab === 'profile' && (
+            <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 sm:p-8">
+              <h2 className="text-2xl font-extrabold text-slate-800 mb-2">Patient Profile</h2>
+              <p className="text-slate-500 font-medium mb-6">Manage your medical profile and emergency contacts.</p>
+              
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3 mb-8">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <p className="text-blue-800 text-sm font-semibold">
+                  This information is shown to doctors in emergencies even without your consent
+                </p>
+              </div>
+
+              {profileStatus === 'success' && (
+                <div className="mb-6 p-4 rounded-xl text-sm font-bold flex items-center gap-2 bg-green-50 text-green-700 border border-green-200">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                  Profile updated successfully!
+                </div>
+              )}
+              {profileError && (
+                <div className="mb-6 p-4 rounded-xl text-sm font-bold flex items-center gap-2 bg-red-50 text-red-700 border border-red-200">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  {profileError}
+                </div>
+              )}
+
+              <form onSubmit={handleProfileSave} className="space-y-6 max-w-2xl">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Blood Group</label>
+                  <select
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                    value={profileForm.blood_group}
+                    onChange={(e) => setProfileForm({ ...profileForm, blood_group: e.target.value })}
+                  >
+                    <option value="">Select Blood Group</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Allergies</label>
+                  <textarea
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium min-h-[100px]"
+                    placeholder="e.g. Penicillin, Pollen, Peanuts"
+                    value={profileForm.allergies}
+                    onChange={(e) => setProfileForm({ ...profileForm, allergies: e.target.value })}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Emergency Contact Name</label>
+                    <input
+                      type="text"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                      value={profileForm.emergency_contact_name}
+                      onChange={(e) => setProfileForm({ ...profileForm, emergency_contact_name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Emergency Contact Phone</label>
+                    <div className="flex gap-2">
+                      <select 
+                        className="w-1/3 sm:w-32 bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                        value={countryCode}
+                        onChange={e => setCountryCode(e.target.value)}
+                      >
+                        <option value="+91">🇮🇳 +91</option>
+                        <option value="+1">🇺🇸 +1</option>
+                        <option value="+44">🇬🇧 +44</option>
+                        <option value="+61">🇦🇺 +61</option>
+                        <option value="+971">🇦🇪 +971</option>
+                        <option value="+65">🇸🇬 +65</option>
+                      </select>
+                      <input
+                        type="text"
+                        maxLength={10}
+                        className={`w-full bg-slate-50 border text-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium ${isPhoneInvalid ? 'border-red-500' : 'border-slate-200'}`}
+                        value={phone}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          setPhone(val);
+                        }}
+                      />
+                    </div>
+                    {isPhoneInvalid && <p className="text-red-500 text-xs font-bold mt-1">Phone number must be exactly 10 digits</p>}
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isPhoneInvalid}
+                  className={`px-6 py-3 text-white font-bold rounded-xl transition shadow-md flex items-center gap-2 ${isPhoneInvalid ? 'bg-slate-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                  Save Profile
+                </button>
+              </form>
+            </div>
+          )}
+
           {/* RECORDS TAB */}
           {activeTab === 'records' && (
             <div className="space-y-5">
@@ -429,7 +601,7 @@ export default function PatientDashboard() {
                 
                 {qrCode ? (
                   <div className="flex flex-col items-center">
-                    <div className="relative p-6 bg-white rounded-2xl shadow-[0_0_40px_rgba(59,130,246,0.3)]">
+                    <div className="relative p-6 bg-white rounded-2xl shadow-[0_0_40px_rgba(59,130,246,0.3)] mb-6">
                        {/* Decorative Corner Brackets */}
                        <div className="absolute -top-2 -left-2 w-8 h-8 border-t-4 border-l-4 border-blue-500 rounded-tl-xl pointer-events-none"></div>
                        <div className="absolute -top-2 -right-2 w-8 h-8 border-t-4 border-r-4 border-blue-500 rounded-tr-xl pointer-events-none"></div>
@@ -443,7 +615,23 @@ export default function PatientDashboard() {
                        />
                     </div>
                     
-                    <div className="flex flex-col w-full gap-4 mt-10">
+                    <button
+                      onClick={() => {
+                        const link = document.createElement('a')
+                        link.href = 'data:image/png;base64,' + qrCode
+                        link.download = `medipassport-qr-${user?.health_id?.slice(0,8)}.png`
+                        link.click()
+                      }}
+                      className="flex items-center gap-2 px-6 py-3 border-2 border-blue-500 text-blue-500 font-bold rounded-xl hover:bg-blue-50 transition shadow-sm justify-center"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                      </svg>
+                      Download QR Code
+                    </button>
+                    <p className="text-slate-400 text-sm mt-3 font-medium text-center">Show this QR to any doctor or first responder for instant access</p>
+
+                    <div className="flex flex-col w-full gap-4 mt-8">
                       <div className="bg-slate-800/50 border border-slate-700 px-6 py-4 rounded-xl text-white font-mono font-bold tracking-widest text-sm w-full shadow-inner truncate">
                         {user?.health_id}
                       </div>

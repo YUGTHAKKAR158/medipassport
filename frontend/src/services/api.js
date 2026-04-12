@@ -24,3 +24,12 @@ export const getPatientRecords = (patientId) => API.get('/records/patient/' + pa
 export const addRecord = (formData) => API.post('/records', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
 export const editRecord = (recordId, formData) => API.put('/records/' + recordId, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
 export const deleteRecord = (recordId) => API.delete('/records/' + recordId)
+
+export const getProfile = () => API.get('/profile')
+export const updateProfile = (data) => API.put('/profile', data)
+export const getEmergencyProfile = (healthId) => {
+  const baseURL = window.location.hostname === 'localhost' && window.location.port === '5173'
+    ? 'http://localhost:5000/api'
+    : '/api'
+  return axios.get(`${baseURL}/profile/emergency/${healthId}`)
+}
