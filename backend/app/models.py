@@ -25,6 +25,7 @@ class MedicalRecord(db.Model):
 
 class AccessRequest(db.Model):
     __tablename__ = 'access_requests'
+    __table_args__ = {'extend_existing': True}
     id = db.Column(db.Integer, primary_key=True)
     doctor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     patient_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
