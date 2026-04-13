@@ -30,3 +30,26 @@ class AccessRequest(db.Model):
     patient_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     status = db.Column(db.String(20), default='pending')
     requested_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+class PatientProfile(db.Model):
+    __tablename__ = 'patient_profiles'
+    id = db.Column(db.Integer, primary_key=True)
+    patient_id = db.Column(db.Integer, db.ForeignKey('users.id'), unique=True, nullable=False)
+    blood_type = db.Column(db.String(10))
+    allergies = db.Column(db.Text)
+    chronic_conditions = db.Column(db.Text)
+    current_medications = db.Column(db.Text)
+    emergency_contact_name = db.Column(db.String(100))
+    emergency_contact_phone = db.Column(db.String(20))
+    date_of_birth = db.Column(db.String(20))
+    gender = db.Column(db.String(20))
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+class AccessRequest(db.Model):
+    __tablename__ = 'access_requests'
+    id = db.Column(db.Integer, primary_key=True)
+    doctor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    patient_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    status = db.Column(db.String(20), default='pending')
+    requested_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=True)

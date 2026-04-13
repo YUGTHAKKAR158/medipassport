@@ -9,6 +9,6 @@ qr_bp = Blueprint('qr', __name__)
 @jwt_required()
 def get_qr(patient_id):
     user = User.query.get_or_404(patient_id)
-    url = f"http://localhost:5173/scan/{user.health_id}"
+    url = "https://13.234.102.77/emergency/" + user.health_id # url = f"http://localhost:5173/scan/{user.health_id}"
     qr_base64 = generate_qr(url)
     return jsonify({'qr_code': qr_base64, 'health_id': user.health_id}), 200

@@ -11,3 +11,14 @@ createRoot(document.getElementById('root')).render(
     </AuthProvider>
   </StrictMode>,
 )
+
+import ToastContainer from './components/Toast'
+
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
+    <AuthProvider>
+      <App />
+      <ToastContainer />
+    </AuthProvider>
+  </StrictMode>,
+)

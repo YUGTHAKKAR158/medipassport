@@ -2,6 +2,8 @@ import RecordEditForm from '../components/RecordEditForm'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { getRecords, getQRCode, getPendingRequests, respondAccess, editRecord } from '../services/api'
+import { useNavigate } from 'react-router-dom'
+import { getGrantedAccess, revokeAccess } from '../services/api'
 
 const RECORD_TYPES = [
   'Lab Report', 'Prescription', 'Surgery Notes',
@@ -9,8 +11,66 @@ const RECORD_TYPES = [
   'General Checkup', 'Other'
 ]
 
+function AccessControlTab() {
+  const [granted, setGranted] = useState([])
+
+  useEffect(() => {
+    fetchGranted()
+  }, [])
+
+  const fetchGranted = async () => {
+    try {
+      const res = await getGrantedAccess()
+      setGranted(res.data)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const handleRevoke = async (requestId) => {
+    if (!window.confirm('Revoke this doctor\'s access to your records?')) return
+    try {
+      await revokeAccess(requestId)
+      setGranted(prev => prev.filter(r => r.request_id !== requestId))
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="bg-white rounded-xl p-5 shadow-sm">
+        <p className="font-medium text-gray-700 mb-1">Doctors with access to your records</p>
+        <p className="text-xs text-gray-400 mb-4">You can revoke access at any time</p>
+        {granted.length === 0 ? (
+          <p className="text-gray-400 text-sm">No doctors currently have access to your records.</p>
+        ) : (
+          granted.map(r => (
+            <div key={r.request_id} className="flex justify-between items-center py-3 border-b last:border-0">
+              <div>
+                <p className="text-sm font-medium text-gray-800">Dr. {r.doctor_name}</p>
+                <p className="text-xs text-gray-400">{r.doctor_email}</p>
+                <p className="text-xs text-gray-300 mt-0.5">
+                  Expires: {r.expires_at === 'Permanent' ? 'Never (Permanent)' : new Date(r.expires_at).toLocaleDateString()}
+                </p>
+              </div>
+              <button
+                onClick={() => handleRevoke(r.request_id)}
+                className="text-xs bg-red-50 text-red-500 border border-red-200 px-3 py-1 rounded-lg hover:bg-red-100 transition"
+              >
+                Revoke
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function PatientDashboard() {
   const { user, logout } = useAuth()
+  const navigate = useNavigate()
   const [records, setRecords] = useState([])
   const [qrCode, setQrCode] = useState(null)
   const [pendingRequests, setPendingRequests] = useState([])
@@ -40,9 +100,9 @@ export default function PatientDashboard() {
     }
   }
 
-  const handleAccessResponse = async (requestId, status) => {
+  const handleAccessResponse = async (requestId, status, expiryDays) => {
     try {
-      await respondAccess(requestId, status)
+      await respondAccess(requestId, status, expiryDays)
       setPendingRequests(prev => prev.filter(r => r.id !== requestId))
     } catch (err) {
       console.error(err)
@@ -74,6 +134,32 @@ export default function PatientDashboard() {
     }
   }
 
+  const getTypeColor = (type) => {
+    const colors = {
+      'Lab Report': 'bg-blue-100 text-blue-600',
+      'Prescription': 'bg-green-100 text-green-600',
+      'X-Ray / Scan': 'bg-purple-100 text-purple-600',
+      'Surgery Notes': 'bg-red-100 text-red-600',
+      'Vaccination': 'bg-yellow-100 text-yellow-600',
+      'Diagnosis': 'bg-orange-100 text-orange-600',
+      'General Checkup': 'bg-teal-100 text-teal-600',
+    }
+    return colors[type] || 'bg-gray-100 text-gray-600'
+  }
+
+  const getTypeInitial = (type) => {
+    const initials = {
+      'Lab Report': 'LAB',
+      'Prescription': 'RX',
+      'X-Ray / Scan': 'XR',
+      'Surgery Notes': 'SRG',
+      'Vaccination': 'VAC',
+      'Diagnosis': 'DX',
+      'General Checkup': 'CHK',
+    }
+    return initials[type] || 'REC'
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -92,7 +178,16 @@ export default function PatientDashboard() {
         </div>
         <div className="flex items-center gap-4">
           <span className="text-sm text-gray-600">Hello, {user?.name}</span>
-          <button onClick={logout} className="text-sm bg-red-50 text-red-500 px-3 py-1 rounded-lg hover:bg-red-100 transition">
+          <button
+            onClick={() => navigate('/profile')}
+            className="text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded-lg hover:bg-blue-100 transition"
+          >
+            My Profile
+          </button>
+          <button
+            onClick={logout}
+            className="text-sm bg-red-50 text-red-500 px-3 py-1 rounded-lg hover:bg-red-100 transition"
+          >
             Logout
           </button>
         </div>
@@ -128,15 +223,40 @@ export default function PatientDashboard() {
               {pendingRequests.length} doctor(s) requesting access to your records
             </p>
             {pendingRequests.map(req => (
-              <div key={req.id} className="flex items-center justify-between bg-white rounded-lg p-3 mb-2 shadow-sm">
-                <div>
-                  <p className="text-sm font-medium text-gray-800">Dr. {req.doctor_name}</p>
-                  <p className="text-xs text-gray-400">{req.doctor_email}</p>
+              <div key={req.id} className="bg-white rounded-lg p-4 mb-2 shadow-sm">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">Dr. {req.doctor_name}</p>
+                    <p className="text-xs text-gray-400">{req.doctor_email}</p>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => handleAccessResponse(req.id, 'approved')} className="text-xs bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-green-600 transition">Approve</button>
-                  <button onClick={() => handleAccessResponse(req.id, 'denied')} className="text-xs bg-red-400 text-white px-3 py-1 rounded-lg hover:bg-red-500 transition">Deny</button>
+
+                <div className="mb-3">
+                  <p className="text-xs text-gray-500 font-medium mb-1">Grant access for:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { label: '1 Day', value: 1 },
+                      { label: '1 Week', value: 7 },
+                      { label: '1 Month', value: 30 },
+                      { label: 'Permanent', value: null }
+                    ].map(opt => (
+                      <button
+                        key={opt.label}
+                        onClick={() => handleAccessResponse(req.id, 'approved', opt.value)}
+                        className="text-xs bg-green-50 text-green-700 border border-green-300 px-3 py-1 rounded-lg hover:bg-green-100 transition"
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+
+                <button
+                  onClick={() => handleAccessResponse(req.id, 'denied', null)}
+                  className="text-xs bg-red-50 text-red-500 border border-red-200 px-4 py-1 rounded-lg hover:bg-red-100 transition"
+                >
+                  Deny Access
+                </button>
               </div>
             ))}
           </div>
@@ -144,7 +264,7 @@ export default function PatientDashboard() {
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
-          {['overview', 'records', 'qrcode'].map(tab => (
+          {['overview', 'records', 'qrcode', 'access'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -153,7 +273,7 @@ export default function PatientDashboard() {
                 (activeTab === tab ? 'bg-blue-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-100')
               }
             >
-              {tab === 'qrcode' ? 'My QR Code' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === 'qrcode' ? 'My QR Code' : tab === 'access' ? 'Access Control' : tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
         </div>
@@ -194,68 +314,62 @@ export default function PatientDashboard() {
 
         {/* Records Tab */}
         {activeTab === 'records' && (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {records.length === 0 ? (
               <div className="bg-white rounded-xl p-8 text-center shadow-sm">
                 <p className="text-gray-400">No medical records found.</p>
               </div>
             ) : (
-              records.map(r => (
-                <div key={r.id} className="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
-                  {editingRecord === r.id ? (
-                    <RecordEditForm
-                      record={r}
-                      onSave={async (id, formData) => {
-                        try {
-                          const res = await editRecord(id, formData)
-                          setRecords(prev => prev.map(rec =>
-                            rec.id === id
-                              ? { ...rec, title: formData.get('title'), record_type: formData.get('record_type'), description: formData.get('description'), file_urls: res.data.file_urls }
-                              : rec
-                          ))
-                          setEditingRecord(null)
-                          fetchData()
-                        } catch (err) { console.error(err) }
-                      }}
-                      onCancel={() => setEditingRecord(null)}
-                    />
-                  ) : (
-                    <div>
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="font-medium text-gray-800">{r.title}</p>
-                            <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">{r.record_type}</span>
-                          </div>
-                          <p className="text-sm text-gray-500">{r.description}</p>
-                          <p className="text-xs text-gray-400 mt-2">{new Date(r.date).toLocaleDateString()}</p>
-                          {r.file_urls && r.file_urls.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mt-3">
-                              {r.file_urls.map((url, i) => (
-                                <a
-                                  key={i}
-                                  href={url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-xs bg-teal-50 text-teal-600 border border-teal-200 px-3 py-1 rounded-lg hover:bg-teal-100 transition"
-                                >
-                                  View File {i + 1}
-                                </a>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => setEditingRecord(r.id)}
-                          className="ml-4 text-xs bg-gray-100 text-gray-600 px-3 py-1 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition"
-                        >
-                          Edit
-                        </button>
-                      </div>
+              <div className="relative">
+                <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-blue-100"></div>
+                {records.map((r, index) => (
+                  <div key={r.id} className="relative flex gap-4 mb-4">
+                    <div className={'w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 z-10 text-xs font-bold ' + getTypeColor(r.record_type)}>
+                      {getTypeInitial(r.record_type)}
                     </div>
-                  )}
-                </div>
-              ))
+                    <div className="flex-1 bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+                      {editingRecord === r.id ? (
+                        <RecordEditForm
+                          record={r}
+                          onSave={async (id, formData) => {
+                            try {
+                              const res = await editRecord(id, formData)
+                              setRecords(prev => prev.map(rec =>
+                                rec.id === id ? { ...rec, title: formData.get('title'), record_type: formData.get('record_type'), description: formData.get('description'), file_urls: res.data.file_urls } : rec
+                              ))
+                              setEditingRecord(null)
+                              fetchData()
+                            } catch (err) { console.error(err) }
+                          }}
+                          onCancel={() => setEditingRecord(null)}
+                        />
+                      ) : (
+                        <div>
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <p className="font-medium text-gray-800">{r.title}</p>
+                              <p className="text-xs text-gray-400 mt-0.5">{new Date(r.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                              <p className="text-sm text-gray-500 mt-2">{r.description}</p>
+                              {r.file_urls && r.file_urls.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  {r.file_urls.map((url, i) => (
+                                    <a key={i} href={url} target="_blank" rel="noreferrer" className="text-xs bg-teal-50 text-teal-600 border border-teal-200 px-3 py-1 rounded-lg hover:bg-teal-100">
+                                      View File {i + 1}
+                                    </a>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <button onClick={() => setEditingRecord(r.id)} className="ml-3 text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded hover:bg-blue-50 hover:text-blue-600">
+                              Edit
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}
@@ -286,6 +400,10 @@ export default function PatientDashboard() {
               <p className="text-gray-400">Loading QR code...</p>
             )}
           </div>
+        )}
+
+        {activeTab === 'access' && (
+          <AccessControlTab />
         )}
 
       </div>

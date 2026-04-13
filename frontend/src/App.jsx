@@ -4,6 +4,8 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import PatientDashboard from './pages/PatientDashboard'
 import DoctorPortal from './pages/DoctorPortal'
+import PatientProfile from './pages/PatientProfile'
+import EmergencyView from './pages/EmergencyView'
 
 function ProtectedRoute({ children, role }) {
   const { user } = useAuth()
@@ -29,6 +31,12 @@ function App() {
             <DoctorPortal />
           </ProtectedRoute>
         } />
+        <Route path="/profile" element={
+          <ProtectedRoute role="patient">
+            <PatientProfile />
+          </ProtectedRoute>
+        } />
+        <Route path="/emergency/:healthId" element={<EmergencyView />} />
       </Routes>
     </BrowserRouter>
   )
