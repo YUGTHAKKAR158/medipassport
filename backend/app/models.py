@@ -45,12 +45,3 @@ class PatientProfile(db.Model):
     date_of_birth = db.Column(db.String(20))
     gender = db.Column(db.String(20))
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-class AccessRequest(db.Model):
-    __tablename__ = 'access_requests'
-    id = db.Column(db.Integer, primary_key=True)
-    doctor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    patient_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    status = db.Column(db.String(20), default='pending')
-    requested_at = db.Column(db.DateTime, default=datetime.utcnow)
-    expires_at = db.Column(db.DateTime, nullable=True)
