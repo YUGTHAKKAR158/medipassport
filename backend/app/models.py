@@ -30,6 +30,7 @@ class AccessRequest(db.Model):
     patient_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     status = db.Column(db.String(20), default='pending')
     requested_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=True)
     
 class PatientProfile(db.Model):
     __tablename__ = 'patient_profiles'
