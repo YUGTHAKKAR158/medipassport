@@ -16,7 +16,7 @@ def request_access():
     if not health_id:
         return jsonify({'error': 'Health ID is required'}), 400
 
-    patient = User.query.filter_by(health_id=health_id).first()
+    patient = User.query.filter(User.health_id.ilike(health_id)).first()
     if not patient:
         return jsonify({'error': 'Patient not found. Check the Health ID.'}), 404
     

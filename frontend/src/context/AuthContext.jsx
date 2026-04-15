@@ -10,9 +10,20 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const savedUser = localStorage.getItem('mp_user')
     const savedToken = localStorage.getItem('mp_token')
-    if (savedUser && savedToken) {
-      setUser(JSON.parse(savedUser))
-      setToken(savedToken)
+    
+    if (savedUser && savedUser !== 'undefined' && savedToken && savedToken !== 'undefined') {
+      try {
+        const parsedUser = JSON.parse(savedUser)
+        setUser(parsedUser)
+        setToken(savedToken)
+      } catch (err) {
+        console.error('Failed to parse saved user:', err)
+        localStorage.removeItem('mp_user')
+        localStorage.removeItem('mp_token')
+      }
+    } else {
+      localStorage.removeItem('mp_user')
+      localStorage.removeItem('mp_token')
     }
     setLoading(false)
   }, [])

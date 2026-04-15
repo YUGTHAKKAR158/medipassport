@@ -1,7 +1,7 @@
 import RecordEditForm from '../components/RecordEditForm'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { requestAccess, addRecord, getApprovedPatients, getPatientRecords, editRecord, deleteRecord } from '../services/api'
+import { requestAccess, addRecord, getApprovedPatients, getPatientRecords, editRecord, deleteRecord, getPatientProfile, logActivity } from '../services/api'
 
 const RECORD_TYPES = [
   'Lab Report', 'Prescription', 'Surgery Notes',
@@ -22,6 +22,7 @@ export default function DoctorPortal() {
   const [approvedPatients, setApprovedPatients] = useState([])
   const [selectedPatient, setSelectedPatient] = useState(null)
   const [patientRecords, setPatientRecords] = useState([])
+  const [selectedPatientProfile, setSelectedPatientProfile] = useState(null)
   const [loadingRecords, setLoadingRecords] = useState(false)
   const [selectedPatientId, setSelectedPatientId] = useState('')
   const [patientSearch, setPatientSearch] = useState('')
@@ -41,7 +42,8 @@ export default function DoctorPortal() {
   const handleRequestAccess = async () => {
     if (!healthId.trim()) return
     try {
-      await requestAccess(healthId)
+      await requestAccess(healthId.trim())
+      await logActivity('REQUEST_ACCESS', `Requested access to patient with Health ID: ${healthId.trim()}`)
       setAccessStatus('success')
       setAccessMessage('Access request sent! Waiting for patient to approve.')
     } catch (err) {
@@ -55,9 +57,16 @@ export default function DoctorPortal() {
     setLoadingRecords(true)
     setEditingRecord(null)
     try {
-      const res = await getPatientRecords(patient.patient_id)
-      setPatientRecords(res.data)
-    } catch { setPatientRecords([]) }
+      const [recordsRes, profileRes] = await Promise.all([
+        getPatientRecords(patient.patient_id),
+        getPatientProfile(patient.patient_id)
+      ])
+      setPatientRecords(recordsRes.data)
+      setSelectedPatientProfile(profileRes.data)
+    } catch { 
+      setPatientRecords([]) 
+      setSelectedPatientProfile(null)
+    }
     finally { setLoadingRecords(false) }
   }
 
@@ -113,6 +122,7 @@ export default function DoctorPortal() {
     card.files.forEach(f => formData.append('files', f))
     try {
       await addRecord(formData)
+      await logActivity('ADDED_RECORD', `Added a ${card.record_type} record for a patient.`)
       updateCard(card.id, 'status', 'success')
       if (selectedPatient) handleSelectPatient(selectedPatient)
     } catch { updateCard(card.id, 'status', 'error') }
@@ -123,8 +133,83 @@ export default function DoctorPortal() {
     p.patient_email.toLowerCase().includes(patientSearch.toLowerCase())
   )
 
+  if (user && user.is_verified === false) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-sm p-8 max-w-md w-full text-center border">
+          <div className="w-16 h-16 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
+             <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+          </div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Account Pending Verification</h2>
+          <p className="text-sm text-gray-500 mb-6">Your doctor account is currently under review by our administration team. You will be granted access once your credentials have been verified.</p>
+          <button onClick={logout} className="w-full bg-gray-100 text-gray-600 font-medium py-2 rounded-lg hover:bg-gray-200 transition text-sm">Logout</button>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 print:bg-white text-gray-900 font-sans">
+      
+      {/* --- PRINT ONLY DOCUMENT --- */}
+      {selectedPatient && (
+        <div className="hidden print:block absolute top-0 left-0 w-full p-8 font-sans m-0 bg-white z-50 text-black">
+          <div className="border-b-4 border-teal-800 pb-4 mb-6 text-center">
+            <h1 className="text-4xl font-bold tracking-wider text-teal-900">MediPassport</h1>
+            <p className="text-base text-gray-600 uppercase tracking-[0.3em] mt-2 font-bold">Official Medical Record</p>
+            <p className="text-sm mt-3 font-medium text-gray-500">Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()} by Dr. {user?.name}</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-8 mb-6 rounded-lg p-6 bg-gray-50 border-2 border-gray-200">
+            <div>
+              <h2 className="text-xl font-bold text-teal-900 border-b-2 border-teal-200 pb-2 mb-3">Patient Details</h2>
+              <p className="mb-1 text-base"><strong>Name:</strong> {selectedPatient.patient_name}</p>
+              <p className="mb-1 text-base"><strong>Health ID:</strong> {selectedPatient.health_id}</p>
+              <p className="mb-1 text-base"><strong>DOB:</strong> {selectedPatientProfile?.date_of_birth || 'N/A'}</p>
+              <p className="mb-1 text-base"><strong>Gender:</strong> {selectedPatientProfile?.gender || 'N/A'}</p>
+              <p className="text-base mt-2"><strong>Blood Type:</strong> <span className="font-extrabold text-red-600 text-lg ml-1">{selectedPatientProfile?.blood_type || 'Unknown'}</span></p>
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-teal-900 border-b-2 border-teal-200 pb-2 mb-3">Emergency Contact</h2>
+              <p className="mb-1 text-base"><strong>Name:</strong> {selectedPatientProfile?.emergency_contact_name || 'N/A'}</p>
+              <p className="mb-1 text-base"><strong>Phone:</strong> {selectedPatientProfile?.emergency_contact_phone || 'N/A'}</p>
+            </div>
+          </div>
+
+          {selectedPatientProfile?.allergies && selectedPatientProfile.allergies !== 'None recorded' && (
+            <div className="mb-6 border-l-4 border-red-600 bg-red-50 p-4 rounded-r-lg">
+              <h2 className="text-lg font-bold text-red-800 mb-1 flex items-center gap-2">CRITICAL ALLERGY ALERT</h2>
+              <p className="text-red-900 font-medium text-base">{selectedPatientProfile.allergies}</p>
+            </div>
+          )}
+
+          <div className="mt-8">
+            <h2 className="text-2xl font-bold text-teal-900 border-b-2 border-gray-300 pb-2 mb-6">Complete Medical Timeline</h2>
+            {patientRecords.length === 0 ? <p className="text-gray-500 italic">No records found for this patient.</p> : (
+              <div className="space-y-6 break-inside-auto">
+                {patientRecords.map(r => (
+                  <div key={r.id} className="border-l-4 border-teal-500 pl-4 py-2 break-inside-avoid shadow-sm rounded-r-lg bg-gray-50/50">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="text-lg font-bold text-gray-900">{r.title}</h3>
+                      <span className="text-xs font-bold px-2 py-1 rounded bg-teal-100 text-teal-800 tracking-wider uppercase border border-teal-200">{r.record_type}</span>
+                    </div>
+                    <p className="text-sm font-semibold text-gray-600 mb-2">{new Date(r.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                    <p className="text-base text-gray-800 mb-2 leading-relaxed">{r.description}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-12 text-center text-xs text-gray-500 pb-8 border-t-2 border-gray-200 pt-6 font-medium">
+            <p>Generated by MediPassport — Confidential Medical Document</p>
+            <p className="mt-1">This document is electronically generated and requires no formal signature.</p>
+          </div>
+        </div>
+      )}
+      {/* --- END PRINT ONLY DOCUMENT --- */}
+
+      <div className="print:hidden">
       <nav className="bg-white shadow-sm px-6 py-4 flex justify-between items-center">
         <div>
           <h1 className="text-xl font-bold text-blue-600">MediPassport</h1>
@@ -251,7 +336,16 @@ export default function DoctorPortal() {
                 {/* Selected patient records */}
                 {selectedPatient && (
                   <div className="bg-white rounded-xl shadow-sm p-5">
-                    <p className="font-semibold text-gray-700 mb-4">Records for {selectedPatient.patient_name}</p>
+                    <div className="flex justify-between items-center mb-4">
+                      <p className="font-semibold text-gray-700">Records for {selectedPatient.patient_name}</p>
+                      <button 
+                        onClick={() => window.print()} 
+                        className="bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-teal-700 transition flex items-center gap-2 shadow-sm hover:shadow"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        Download PDF
+                      </button>
+                    </div>
                     {loadingRecords ? (
                       <p className="text-gray-400 text-sm">Loading...</p>
                     ) : patientRecords.length === 0 ? (
@@ -405,6 +499,7 @@ export default function DoctorPortal() {
             </button>
           </div>
         )}
+      </div>
       </div>
     </div>
   )

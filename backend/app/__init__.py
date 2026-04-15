@@ -22,6 +22,9 @@ def create_app():
     from .routes.access import access_bp
     from .routes.profile import profile_bp
     from .routes.emergency import emergency_bp
+    from .routes.share import share_bp
+    from .routes.activity import activity_bp
+    from .routes.admin import admin_bp
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(records_bp, url_prefix='/api/records')
@@ -29,6 +32,9 @@ def create_app():
     app.register_blueprint(access_bp, url_prefix='/api/access')
     app.register_blueprint(profile_bp, url_prefix='/api/profile')
     app.register_blueprint(emergency_bp, url_prefix='/api/emergency')
+    app.register_blueprint(share_bp, url_prefix='/api/share')
+    app.register_blueprint(activity_bp, url_prefix='/api/activity')
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')
 
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'uploads')
     UPLOAD_FOLDER = os.path.normpath(UPLOAD_FOLDER)

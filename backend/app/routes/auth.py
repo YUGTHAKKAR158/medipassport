@@ -11,11 +11,13 @@ def register():
     data = request.get_json()
     if User.query.filter_by(email=data['email']).first():
         return jsonify({'error': 'Email already exists'}), 400
+    role = data.get('role', 'patient')
     user = User(
         name=data['name'],
         email=data['email'],
         password_hash=generate_password_hash(data['password']),
-        role=data.get('role', 'patient')
+        role=role,
+        is_verified=(role == 'patient' or role == 'admin') # admin/patients bypass verification
     )
     db.session.add(user)
     db.session.commit()
@@ -35,6 +37,7 @@ def login():
             'name': user.name,
             'email': user.email,
             'role': user.role,
-            'health_id': user.health_id
+            'health_id': user.health_id,
+            'is_verified': user.is_verified
         }
     }), 200

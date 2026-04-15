@@ -6,6 +6,8 @@ import PatientDashboard from './pages/PatientDashboard'
 import DoctorPortal from './pages/DoctorPortal'
 import PatientProfile from './pages/PatientProfile'
 import EmergencyView from './pages/EmergencyView'
+import SharedView from './pages/SharedView'
+import AdminDashboard from './pages/AdminDashboard'
 
 function ProtectedRoute({ children, role }) {
   const { user } = useAuth()
@@ -36,7 +38,13 @@ function App() {
             <PatientProfile />
           </ProtectedRoute>
         } />
+        <Route path="/admin" element={
+          <ProtectedRoute role="admin">
+            <AdminDashboard />
+          </ProtectedRoute>
+        } />
         <Route path="/emergency/:healthId" element={<EmergencyView />} />
+        <Route path="/shared/:token" element={<SharedView />} />
       </Routes>
     </BrowserRouter>
   )
